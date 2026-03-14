@@ -1,0 +1,593 @@
+# Top 30 Scenario-Based DevOps Mock Interview Questions and Answers
+
+## 1) Jenkins pipeline was working yesterday, but today it is failing. How do you troubleshoot?
+
+**Answer:**\
+First I check the console output and identify exactly which stage is
+failing. Then I verify whether the issue is due to:
+
+-   code changes\
+-   credentials issue\
+-   Jenkins agent issue\
+-   network issue\
+-   tool/plugin version issue\
+-   disk space issue
+
+My troubleshooting flow is:
+
+1.  open failed build logs\
+2.  identify failed command\
+3.  compare with last successful build\
+4.  verify Jenkins credentials\
+5.  check agent status\
+6.  check workspace and disk usage\
+7.  manually run the failed command on the same agent if possible
+
+If needed, I also verify Git access, Docker registry access, and
+Kubernetes cluster access.
+
+------------------------------------------------------------------------
+
+## 2) A Docker image builds successfully, but the container exits immediately after starting. What will you do?
+
+**Answer:**\
+I first check the container logs:
+
+    docker logs <container_id>
+
+Then I inspect the container configuration:
+
+    docker inspect <container_id>
+
+After that I verify:
+
+-   whether the startup command is correct\
+-   whether required environment variables are passed\
+-   whether the application process is crashing\
+-   whether dependencies are missing\
+-   whether the app is binding to the expected port
+
+If needed, I run the image interactively:
+
+    docker run -it <image_name> sh
+
+Common reasons are wrong CMD, missing env variables, application crash,
+or dependency/configuration issues.
+
+------------------------------------------------------------------------
+
+## 3) A container works on your laptop but fails in Kubernetes. Why can that happen?
+
+**Answer:**\
+This usually happens because the environment in Kubernetes is different
+from local Docker. I check:
+
+-   environment variables\
+-   ConfigMap values\
+-   Secret values\
+-   service DNS names\
+-   database connectivity\
+-   container port vs service port\
+-   readiness/liveness probe configuration\
+-   image version mismatch\
+-   resource limits
+
+I troubleshoot using:
+
+    kubectl logs <pod-name>
+    kubectl describe pod <pod-name>
+    kubectl exec -it <pod-name> -- sh
+
+A local success only proves the image works in one environment, not that
+it is correctly configured in Kubernetes.
+
+------------------------------------------------------------------------
+
+## 4) Your pod is in CrashLoopBackOff. How do you handle it?
+
+**Answer:**\
+I handle it in this order:
+
+1.  check logs\
+
+```{=html}
+<!-- -->
+```
+    kubectl logs <pod-name>
+
+2.  check previous logs if restarting quickly\
+
+```{=html}
+<!-- -->
+```
+    kubectl logs <pod-name> --previous
+
+3.  describe the pod\
+
+```{=html}
+<!-- -->
+```
+    kubectl describe pod <pod-name>
+
+4.  verify environment variables\
+5.  verify ConfigMaps and Secrets\
+6.  verify startup command\
+7.  test connectivity to dependencies like database or API\
+8.  check resource limits and probe failures
+
+Typical causes are application startup failure, missing configuration,
+DB connection failure, or OOMKilled.
+
+------------------------------------------------------------------------
+
+## 5) Users say the application is down, but pods are showing as Running. What could be wrong?
+
+**Answer:**\
+A pod being in Running state does not always mean the application is
+healthy. I check:
+
+-   readiness probe status\
+-   application logs\
+-   service endpoints\
+-   service selector and pod labels\
+-   ingress/load balancer config\
+-   whether app is listening on correct port/interface
+
+Commands:
+
+    kubectl get pods
+    kubectl get svc
+    kubectl get endpoints
+    kubectl describe pod <pod-name>
+    kubectl logs <pod-name>
+
+Very often the app is running but not ready, or the service is not
+routing traffic to it.
+
+------------------------------------------------------------------------
+
+## 6) A deployment succeeded, but the old version of the application is still visible. Why?
+
+**Answer:**\
+Possible reasons include:
+
+-   image tag reused, such as latest\
+-   image was not pulled again\
+-   wrong deployment updated\
+-   wrong namespace\
+-   browser cache or CDN cache\
+-   rollout not triggered properly
+
+I verify with:
+
+    kubectl describe deployment <deployment-name>
+    kubectl get pods -n <namespace>
+    kubectl rollout history deployment/<deployment-name>
+
+Best practice is to use unique image tags like build number or commit
+SHA instead of latest.
+
+------------------------------------------------------------------------
+
+## 7) Your Jenkins server disk is full. How do you respond?
+
+**Answer:**\
+First I confirm usage:
+
+    df -h
+    du -sh /var/lib/jenkins/*
+    docker system df
+
+Then I identify the heavy areas:
+
+-   old workspaces\
+-   build history\
+-   archived artifacts\
+-   Docker images and containers\
+-   logs
+
+Actions:
+
+-   delete old workspaces/builds\
+-   configure retention policy\
+-   prune unused Docker images\
+-   rotate logs\
+-   offload artifacts to S3 or artifact repository
+
+I also make sure to implement cleanup policies so the issue doesn't
+repeat.
+
+------------------------------------------------------------------------
+
+## 8) Your application is exposed through Ingress, but users are getting 502 Bad Gateway. What do you check?
+
+**Answer:**\
+A 502 usually means the ingress controller cannot reach a healthy
+backend. I check:
+
+-   backend pod health\
+-   service configuration\
+-   service endpoints\
+-   ingress rules\
+-   backend app port\
+-   readiness probe\
+-   ingress controller logs
+
+Commands:
+
+    kubectl get ingress
+    kubectl describe ingress <ingress-name>
+    kubectl get svc
+    kubectl get endpoints
+    kubectl logs <backend-pod>
+
+If service has no endpoints or backend is unhealthy, ingress will return
+502.
+
+------------------------------------------------------------------------
+
+## 9) You deployed a new release and now CPU usage is very high. What would you do?
+
+**Answer:**\
+First I determine whether the issue is application-side or
+infrastructure-side.
+
+Checks:
+
+-   compare with previous version\
+-   check logs for loops/errors\
+-   inspect traffic spike\
+-   inspect pod resource usage\
+-   inspect node usage
+
+Commands:
+
+    kubectl top pod
+    kubectl top node
+    kubectl logs <pod-name>
+    top
+    htop
+
+If the new version caused the problem, I would rollback quickly while
+investigating the root cause.
+
+------------------------------------------------------------------------
+
+## 10) A Kubernetes pod cannot connect to MongoDB. How do you troubleshoot?
+
+**Answer:**\
+I verify the full path of connectivity:
+
+1.  correct hostname?\
+2.  correct port?\
+3.  service exists?\
+4.  endpoints exist?\
+5.  DNS resolves?\
+6.  credentials correct?\
+7.  DB pod/service healthy?
+
+Commands:
+
+    kubectl get svc
+    kubectl get endpoints
+    kubectl exec -it <pod-name> -- sh
+    nslookup mongodb-service
+    nc -zv mongodb-service 27017
+
+I also check Secrets and application environment variables because wrong
+credentials or wrong service name is very common.
+
+------------------------------------------------------------------------
+
+## 11) One of the containers is restarting repeatedly because of OOMKilled. What will you do?
+
+**Answer:**\
+OOMKilled means the container exceeded its memory limit. I check:
+
+    kubectl describe pod <pod-name>
+    kubectl top pod
+
+Then I verify:
+
+-   memory limits and requests\
+-   application memory usage pattern\
+-   memory leak possibility\
+-   whether runtime settings need tuning
+
+Short-term fix may be increasing memory limit. Long-term fix is
+application tuning if the memory growth is abnormal.
+
+------------------------------------------------------------------------
+
+## 12) Your EC2 instance is reachable through SSH, but the application is not opening in browser. How do you troubleshoot?
+
+**Answer:**\
+I check step by step:
+
+1.  is application process running?\
+
+```{=html}
+<!-- -->
+```
+    ps -ef | grep app
+    systemctl status nginx
+
+2.  is app listening on expected port?\
+
+```{=html}
+<!-- -->
+```
+    ss -tulpn
+
+3.  is security group allowing traffic?\
+4.  is reverse proxy config correct?\
+5.  are logs showing startup or runtime errors?\
+6.  is disk full?\
+7.  is app bound to localhost only?
+
+This lets me isolate whether the issue is process, port, proxy,
+firewall, or application config.
+
+------------------------------------------------------------------------
+
+## 13) Pipeline deploy step says success, but nothing changed in the cluster. What are likely reasons?
+
+**Answer:**\
+Likely reasons:
+
+-   wrong Kubernetes context\
+-   wrong namespace\
+-   wrong deployment name\
+-   same image tag reused\
+-   deployment command targeted wrong resource\
+-   pipeline used stale kubeconfig
+
+I verify using:
+
+    kubectl config current-context
+    kubectl get deployment -n <namespace>
+    kubectl describe deployment <deployment-name>
+
+------------------------------------------------------------------------
+
+## 14) Your team says deployments are causing downtime. How would you reduce it?
+
+**Answer:**\
+I would improve deployment strategy using:
+
+-   rolling updates\
+-   readiness probes\
+-   minimum replica count \> 1\
+-   proper resource requests/limits\
+-   pre-deployment validation\
+-   blue-green or canary where needed\
+-   health checks before shifting traffic
+
+------------------------------------------------------------------------
+
+## 15) Docker image build is taking too long in Jenkins. How do you optimize it?
+
+**Answer:**\
+I optimize Docker builds by improving layer caching and reducing build
+context.
+
+Examples:
+
+-   copy dependency files first\
+-   install dependencies before copying full source\
+-   use `.dockerignore`\
+-   use multi-stage builds\
+-   avoid unnecessary packages
+
+Example pattern:
+
+    COPY package*.json .
+    RUN npm ci
+    COPY . .
+
+------------------------------------------------------------------------
+
+## 16) A node in the Kubernetes cluster becomes NotReady. What will you do?
+
+**Answer:**\
+First I confirm the node status:
+
+    kubectl get nodes
+    kubectl describe node <node-name>
+
+Then I check:
+
+-   kubelet status\
+-   network plugin status\
+-   disk pressure / memory pressure\
+-   container runtime status\
+-   connectivity to control plane
+
+------------------------------------------------------------------------
+
+## 17) Your team wants you to investigate why a pod is healthy in dev but failing in staging. How do you compare?
+
+**Answer:**\
+I compare the environments systematically:
+
+-   image tag\
+-   env vars\
+-   ConfigMaps\
+-   Secrets\
+-   service names\
+-   external dependencies\
+-   resource limits\
+-   ingress/service config
+
+------------------------------------------------------------------------
+
+## 18) A shell script used in deployment works manually, but fails in Jenkins. Why?
+
+**Answer:**\
+Common reasons:
+
+-   different user permissions\
+-   environment variables missing in Jenkins\
+-   path differences\
+-   shell differences\
+-   credentials not available\
+-   working directory mismatch
+
+------------------------------------------------------------------------
+
+## 19) A new engineer accidentally deleted a working container. What do you do?
+
+**Answer:**\
+If the container was created from an image, I simply recreate it from
+the same image and configuration.
+
+If persistent data was stored only inside that container and no volume
+was used, data may be lost.
+
+That is why persistent data should always use volumes or external
+managed storage.
+
+------------------------------------------------------------------------
+
+## 20) Your application can talk to the database locally, but not from EKS. What are possible reasons?
+
+**Answer:**\
+I check:
+
+-   security groups\
+-   VPC routing\
+-   DNS resolution\
+-   credentials\
+-   service names\
+-   network policies
+
+------------------------------------------------------------------------
+
+## 21) Your load balancer health checks are failing. How do you debug?
+
+**Answer:**\
+I check:
+
+-   health check path\
+-   backend service port\
+-   application readiness\
+-   response codes\
+-   timeout settings\
+-   target registration status
+
+------------------------------------------------------------------------
+
+## 22) A deployment rolled out, but some users still hit old version and some hit new version. What is happening?
+
+**Answer:**\
+This can happen during rolling updates or due to caching layers such as
+browser or CDN.
+
+Check rollout status and verify pod image versions.
+
+------------------------------------------------------------------------
+
+## 23) Your backup script ran successfully according to cron, but the backup file is missing. How do you investigate?
+
+**Answer:**\
+Check:
+
+-   cron logs\
+-   absolute paths in script\
+-   file permissions\
+-   backup directory path
+
+Cron runs with limited environment variables so scripts must use
+explicit paths.
+
+------------------------------------------------------------------------
+
+## 24) Your application is slow, but there are no errors in logs. What next?
+
+**Answer:**\
+Check:
+
+-   CPU usage\
+-   memory usage\
+-   disk I/O\
+-   network latency\
+-   database response time\
+-   dependency latency
+
+------------------------------------------------------------------------
+
+## 25) Secrets were accidentally hardcoded in Jenkinsfile. What should be done?
+
+**Answer:**
+
+1.  remove secret immediately\
+2.  rotate credentials\
+3.  move secrets to Jenkins credentials or secret manager\
+4.  check Git history for exposure\
+5.  review access controls
+
+------------------------------------------------------------------------
+
+## 26) A developer says "it's not code, it must be infra". How do you approach?
+
+**Answer:**\
+I investigate objectively by checking:
+
+-   logs\
+-   recent code changes\
+-   infrastructure changes\
+-   configuration values\
+-   deployment history
+
+------------------------------------------------------------------------
+
+## 27) Move from Docker Hub to ECR for EKS deployments. What changes are needed?
+
+**Answer:**
+
+-   create ECR repository\
+-   authenticate Docker to ECR\
+-   tag and push images to ECR\
+-   update Kubernetes deployment image reference\
+-   ensure EKS nodes can pull from ECR
+
+------------------------------------------------------------------------
+
+## 28) A Kubernetes YAML change broke the application. How do you recover?
+
+**Answer:**
+
+Rollback using:
+
+    kubectl rollout undo deployment/<deployment-name>
+
+Or restore the last working manifest from version control.
+
+------------------------------------------------------------------------
+
+## 29) Application started before database was ready. How do you prevent it?
+
+**Answer:**
+
+-   add retry logic in application\
+-   use readiness probes\
+-   add dependency checks\
+-   optionally use init containers
+
+------------------------------------------------------------------------
+
+## 30) Tell about a production issue you handled.
+
+**Answer:**
+
+Explain:
+
+1.  what the issue was\
+2.  impact on users\
+3.  troubleshooting steps\
+4.  fix implemented\
+5.  service recovery\
+6.  preventive improvement
+
+Example: fixing wrong database secret in Kubernetes and rolling back
+deployment to restore service quickly.
