@@ -1,3 +1,5 @@
+**Maine GitHub Actions ke liye AWS OIDC federation setup kiya. Pehle IAM permissions se OIDC provider create kiya, phir GitHub repo aur main branch scoped trust policy ke saath IAM role banaya, aur us role ko ECR push permissions di. Workflow ne us role ko assume karke image ECR me push ki**
+
 1) Sabse pehle overall picture samjho
 
 Is poore setup mein 3 bade parts hote hain:
